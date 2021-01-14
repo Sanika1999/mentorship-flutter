@@ -12,27 +12,52 @@ import './bloc.dart';
 
 class ProfilePageBloc extends Bloc<ProfilePageEvent, ProfilePageState> {
   final UserRepository userRepository;
-  User user; // User object which will receive possible edits
+  User _user; // User object which will receive possible edits
 
-  ProfilePageBloc({@required this.userRepository, this.user}) : assert(userRepository != null);
-
-  @override
-  ProfilePageState get initialState => ProfilePageInitial();
+  ProfilePageBloc({@required this.userRepository})
+      : assert(userRepository != null),
+        super(ProfilePageInitial());
 
   @override
   Stream<ProfilePageState> mapEventToState(ProfilePageEvent event) async* {
     if (event is ProfilePageShowed) {
+      yield* mapEventToProfileShowed(event);
+    } else if (event is ProfilePageRefresh) {
+      yield* mapEventToRefreshRequested(event);
+    } else {
+      yield* mapEventToProfileEditing(event);
+    }
+  }
+
+  Stream<ProfilePageState> mapEventToProfileShowed(ProfilePageEvent event) async* {
+    if (event is ProfilePageShowed) {
       yield ProfilePageLoading();
       try {
-        user = await userRepository.getCurrentUser();
-        yield ProfilePageSuccess(user, message: event.message);
+        _user = await userRepository.getCurrentUser();
+        yield ProfilePageSuccess(_user, message: event.message);
       } on Failure catch (failure) {
-        Logger.root.severe(failure.message);
+        Logger.root.severe("ProfilePageBloc: Failure catched: $failure.message");
         yield ProfilePageFailure(message: failure.message);
       }
     }
+  }
+
+  Stream<ProfilePageState> mapEventToRefreshRequested(ProfilePageEvent event) async* {
+    if (event is ProfilePageRefresh) {
+      yield ProfilePageLoading();
+      try {
+        _user = await userRepository.getCurrentUser();
+        yield ProfilePageSuccess(_user, message: event.message);
+      } on Failure catch (failure) {
+        Logger.root.severe("ProfilePageBloc: Failure catched: $failure.message");
+        yield state;
+      }
+    }
+  }
+
+  Stream<ProfilePageState> mapEventToProfileEditing(ProfilePageEvent event) async* {
     if (event is ProfilePageEditStarted) {
-      yield ProfilePageEditing(user);
+      yield ProfilePageEditing(_user);
     }
 
     if (event is ProfilePageEditSubmitted) {
@@ -54,7 +79,7 @@ class ProfilePageBloc extends Bloc<ProfilePageEvent, ProfilePageState> {
         CustomResponse response = await userRepository.updateUser(updatedUser);
         add(ProfilePageShowed(message: response.message));
       } on Failure catch (failure) {
-        Logger.root.severe(failure.message);
+        Logger.root.severe("ProfilePageBloc: Failure catched: $failure.message");
         add(ProfilePageShowed(message: failure.message));
       }
     }

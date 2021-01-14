@@ -12,10 +12,9 @@ import './bloc.dart';
 class SendRequestBloc extends Bloc<SendRequestEvent, SendRequestState> {
   final RelationRepository relationRepository;
 
-  SendRequestBloc({@required this.relationRepository}) : assert(relationRepository != null);
-
-  @override
-  SendRequestState get initialState => InitialSendRequestState();
+  SendRequestBloc({@required this.relationRepository})
+      : assert(relationRepository != null),
+        super(InitialSendRequestState());
 
   @override
   Stream<SendRequestState> mapEventToState(SendRequestEvent event) async* {
@@ -27,6 +26,9 @@ class SendRequestBloc extends Bloc<SendRequestEvent, SendRequestState> {
         Logger.root.severe("SendRequestBloc: ${failure.message}");
         yield InitialSendRequestState(message: failure.message);
       }
+    }
+    if (event is ResetSnackbarMessage) {
+      yield InitialSendRequestState(message: null);
     }
   }
 }
